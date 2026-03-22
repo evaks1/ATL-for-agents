@@ -1,0 +1,18 @@
+{
+  "name": "atl",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter server dev",
+    "build": "pnpm -r build",
+    "demo": "pnpm --filter server demo",
+    "db:migrate": "pnpm --filter server db:migrate",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "plugin:build": "pnpm --filter @atl/openclaw-plugin build",
+    "plugin:dev": "pnpm --filter @atl/openclaw-plugin dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

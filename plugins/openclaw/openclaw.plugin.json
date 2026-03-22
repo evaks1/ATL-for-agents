@@ -1,0 +1,43 @@
+{
+  "id": "atl",
+  "name": "ATL Permission Guard",
+  "description": "Verifies agent actions against the Agent Trust Layer before execution. Enforces scoped UCAN-based capability delegations.",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "configSchema": {
+    "type": "object",
+    "required": ["serverUrl", "grantId"],
+    "properties": {
+      "serverUrl": {
+        "type": "string",
+        "description": "URL of the ATL server (e.g. http://localhost:3000)"
+      },
+      "grantId": {
+        "type": "string",
+        "description": "UUID of the active ATL delegation (grant_id) for this agent"
+      },
+      "sessionTtlSeconds": {
+        "type": "number",
+        "default": 3600,
+        "description": "How long minted session keys live (seconds)"
+      },
+      "port": {
+        "type": "number",
+        "default": 3001,
+        "description": "Local HTTP port the plugin listens on for /atl/verify calls from skills"
+      },
+      "toolMappings": {
+        "type": "object",
+        "description": "Map of OpenClaw tool names to ATL resource/action. Merged with built-in defaults.",
+        "additionalProperties": {
+          "type": "object",
+          "required": ["resource", "action"],
+          "properties": {
+            "resource": { "type": "string" },
+            "action": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
