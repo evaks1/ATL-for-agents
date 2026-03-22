@@ -144,6 +144,89 @@ npm install -g @atl/openclaw-plugin
 
 Claude will call `POST /atl/verify` before every privileged tool use.
 
+## Other LLMs and Agent Frameworks
+
+The HAEL server is LLM-agnostic. The OpenClaw plugin is Claude Code-specific, but two SDKs ship in the repo for integrating any other agent.
+
+### Node.js / TypeScript agents (`packages/sdk-node`)
+
+```typescript
+import { ATLClient } from "@atl/sdk";
+
+const atl = new ATLClient("https://your-hael-server.fly.dev");
+
+// One-time setup: create agent + delegation (do this with issue-delegation script instead for production)
+const agent = await atl.createAgent();
+const delegation = await atl.createDelegation({
+  principal_id: "my-principal",
+  agent_id: agent.agent_id,
+  capabilities: [{ resource: "*", action: "*", constraints: { step_up_threshold: 500 } }],
+});
+
+// On agent startup: mint a session key (hold in memory)
+const session = await atl.mintSessionKey(delegation.grant_id);
+
+// Before every privileged action: sign + verify
+const receipt = atl.signIntentReceipt(session, {
+  action: "execute",
+  resource: "payment:transfer",
+  amount: 200,
+  counterparty: "acme-corp",
+});
+
+await atl.verifyBeforeExecute(receipt, async () => {
+  // Your tool execution here — only runs if HAEL returns ALLOW
+  await runPayment(...);
+});
+```
+
+`verifyBeforeExecute` throws with `decision: "DENY"` or `decision: "STEP_UP_REQUIRED"` if the action is blocked. Catch the error in your agent's tool dispatcher.
+
+### Python agents (`packages/sdk-python`)
+
+```python
+from atl_sdk import ATLClient
+
+atl = ATLClient("https://your-hael-server.fly.dev")
+
+# On startup: mint session key
+session = atl.mint_session_key(grant_id="<your-grant-id>")
+
+# Before every tool call
+receipt = atl.sign_intent_receipt(session, {
+    "action": "execute",
+    "resource": "payment:transfer",
+    "amount": 200,
+    "counterparty": "acme-corp",
+})
+
+result = atl.verify_intent(receipt)
+if result["decision"] == "ALLOW":
+    run_payment(...)
+elif result["decision"] == "STEP_UP_REQUIRED":
+    # Prompt the human to approve via POST /approvals/:challenge_id/complete
+    request_human_approval(result["challenge_id"])
+```
+
+### Integration pattern for any framework
+
+The three-step pattern works the same regardless of framework (LangChain, AutoGen, GPT function calling, etc.):
+
+```
+1. On startup     →  POST /sessions  →  hold session keypair in memory
+2. Before action  →  sign receipt locally (no network)  →  POST /verify
+3. On ALLOW       →  execute the tool
+   On DENY        →  abort, surface reason_code to user
+   On STEP_UP     →  pause, send challenge_id to human for approval
+```
+
+| Framework | Integration point |
+|-----------|------------------|
+| LangChain | Wrap tools with a `before_run` hook that calls `verify_before_execute` |
+| AutoGen | Subclass `ConversableAgent` and override `execute_function` |
+| OpenAI function calling | Intercept tool calls before dispatching in your run loop |
+| Any HTTP agent | Call `POST /verify` directly; check `decision` before executing |
+
 ## API Reference
 
 | Method | Path | Auth | Description |
