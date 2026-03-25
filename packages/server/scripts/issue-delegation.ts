@@ -23,7 +23,7 @@ import "dotenv/config";
 import { generateKeyPair } from "../src/lib/crypto.js";
 import { issueUCAN, type UCANCapability } from "../src/lib/ucan.js";
 
-const BASE = process.env.ATL_URL ?? "http://localhost:3000";
+const BASE = process.env.ATL_URL ?? "http://127.0.0.1:3000";
 const API_KEY = process.env.SEED_API_KEY ?? "";
 const EXPIRES_IN_SECONDS = parseInt(process.env.EXPIRES_IN_SECONDS ?? "86400", 10);
 
@@ -98,13 +98,18 @@ async function run() {
     agentPublicKey = agent.public_key;
     console.log(`\nUsing existing agent: ${agentId}`);
   } else {
-    const agent = await post<{ agent_id: string; public_key: string }>("/agents", {});
+    // Generate agent keypair locally — private key never sent to server
+    const agentKeyPair = generateKeyPair();
+    const agent = await post<{ agent_id: string; public_key: string }>("/agents", {
+      public_key: agentKeyPair.publicKey,
+    });
     agentId = agent.agent_id;
     agentPublicKey = agent.public_key;
     console.log(`\nCreated new agent:`);
     console.log(`  agent_id:   ${agentId}`);
     console.log(`  public_key: ${agentPublicKey.slice(0, 16)}…`);
-    console.log(`\n  Set this for future runs:`);
+    console.log(`\n  Save the agent private key if you need it for signing:`);
+    console.log(`  AGENT_PRIVATE_KEY=${agentKeyPair.privateKey}`);
     console.log(`  AGENT_ID=${agentId}`);
   }
 

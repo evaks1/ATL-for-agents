@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, type Agent, type Delegation, type Capability } from "../api/client";
 import { CapabilityBuilder, type ToolMapping } from "../components/CapabilityBuilder";
+import { generateKeyPair } from "../lib/crypto";
 
 const EXPIRY_OPTIONS = [
   { label: "1 hour", value: 3600 },
@@ -69,7 +70,9 @@ export function OpenClawPage() {
     setError(null);
     setRegistering(true);
     try {
-      const a = await api.agents.create();
+      // Generate keypair in browser — private key never sent to server
+      const keyPair = generateKeyPair();
+      const a = await api.agents.create(keyPair.publicKey);
       setAgent(a);
       setStep(2);
     } catch (e) {

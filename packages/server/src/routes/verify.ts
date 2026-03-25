@@ -6,7 +6,7 @@ import { requireApiKey } from "../lib/apiKey.js";
 const IntentSchema = z.object({
   action: z.string(),
   resource: z.string(),
-  parameters: z.record(z.unknown()).default({}),
+  parameters: z.record(z.unknown()),
   amount: z.number().optional(),
   counterparty: z.string().optional(),
   timestamp: z.string(),

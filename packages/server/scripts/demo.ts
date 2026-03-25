@@ -18,7 +18,7 @@ import "dotenv/config";
 import { randomUUID } from "crypto";
 import { generateKeyPair, sign, canonicalize } from "../src/lib/crypto.js";
 
-const BASE = process.env.ATL_URL ?? "http://localhost:3000";
+const BASE = process.env.ATL_URL ?? "http://127.0.0.1:3000";
 const API_KEY = process.env.SEED_API_KEY ?? "demo-key-local";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -89,7 +89,11 @@ async function runDemo() {
 
   // ── 1. Create Agent ──────────────────────────────────────────
   log("Step 1: Create Agent");
-  const agent = await post<{ agent_id: string; public_key: string }>("/agents", {});
+  // Generate keypair locally — private key never sent to server
+  const agentKeyPair = generateKeyPair();
+  const agent = await post<{ agent_id: string; public_key: string }>("/agents", {
+    public_key: agentKeyPair.publicKey,
+  });
   console.log(`  agent_id : ${agent.agent_id}`);
   console.log(`  pub_key  : ${agent.public_key.slice(0, 16)}…`);
   assert(!!agent.agent_id, "Agent created with ID");
@@ -125,26 +129,31 @@ async function runDemo() {
 
   // ── 3. Mint Session Key ──────────────────────────────────────
   log("Step 3: Mint ephemeral session key");
+  // Generate session keypair locally — private key stays here, never sent to server
+  const sessionKeyPair = generateKeyPair();
   const session = await post<{
     session_key_id: string;
     public_key: string;
-    private_key: string;
     expires_at: string;
   }>("/sessions", {
     grant_id: delegation.grant_id,
+    public_key: sessionKeyPair.publicKey,
     expires_in_seconds: 3600,
   });
 
+  // Attach locally-generated private key for signing
+  const sessionPrivKey = sessionKeyPair.privateKey;
+
   console.log(`  session_key_id : ${session.session_key_id}`);
   assert(!!session.session_key_id, "Session key minted");
-  assert(!!session.private_key, "Private key returned (once)");
+  assert(!!sessionPrivKey, "Private key held locally (never sent to server)");
 
   // ── 4. ALLOW: within-scope payment ───────────────────────────
   log("Step 4: Verify within-scope intent → expect ALLOW");
   const receipt1 = buildSignedReceipt(
     delegation.grant_id,
     session.session_key_id,
-    session.private_key,
+    sessionPrivKey,
     { action: "execute", resource: "payment:transfer", amount: 200, counterparty: "acme-corp" }
   );
 
@@ -161,7 +170,7 @@ async function runDemo() {
   const receipt2 = buildSignedReceipt(
     delegation.grant_id,
     session.session_key_id,
-    session.private_key,
+    sessionPrivKey,
     { action: "execute", resource: "payment:transfer", amount: 2000, counterparty: "acme-corp" }
   );
 
@@ -179,7 +188,7 @@ async function runDemo() {
   const receipt3 = buildSignedReceipt(
     delegation.grant_id,
     session.session_key_id,
-    session.private_key,
+    sessionPrivKey,
     { action: "execute", resource: "payment:transfer", amount: 100, counterparty: "mystery-vendor" }
   );
 
@@ -229,7 +238,7 @@ async function runDemo() {
   const receipt4 = buildSignedReceipt(
     delegation.grant_id,
     session.session_key_id,
-    session.private_key,
+    sessionPrivKey,
     { action: "execute", resource: "payment:transfer", amount: 100, counterparty: "acme-corp" }
   );
   const v4 = await post<{ decision: string; reason_code: string }>(

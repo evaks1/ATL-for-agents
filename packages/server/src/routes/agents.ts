@@ -1,18 +1,24 @@
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import { db } from "../db/index.js";
 import { agents } from "../db/schema.js";
-import { generateKeyPair } from "../lib/crypto.js";
 import { desc } from "drizzle-orm";
 import { requireApiKey } from "../lib/apiKey.js";
 
+const CreateAgentBody = z.object({
+  // Caller generates the keypair locally and submits only the public key.
+  // The server never sees the agent's private key.
+  public_key: z.string().regex(/^[0-9a-f]{64}$/, "public_key must be a 64-char hex Ed25519 public key"),
+});
+
 export async function agentsRoutes(app: FastifyInstance) {
-  // Create agent
-  app.post("/agents", { preHandler: requireApiKey }, async (_req, reply) => {
-    const { publicKey } = generateKeyPair();
+  // Register agent — private key stays with the caller, never sent here.
+  app.post("/agents", { preHandler: requireApiKey }, async (req, reply) => {
+    const { public_key } = CreateAgentBody.parse(req.body);
 
     const [agent] = await db
       .insert(agents)
-      .values({ publicKey })
+      .values({ publicKey: public_key })
       .returning();
 
     return reply.status(201).send({

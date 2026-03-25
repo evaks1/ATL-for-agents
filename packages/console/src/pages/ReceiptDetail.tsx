@@ -8,7 +8,7 @@ export function ReceiptDetailPage() {
   const [receipt, setReceipt] = useState<ReceiptDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [bundle, setBundle] = useState<unknown>(null);
+  const [bundle, setBundle] = useState<Record<string, unknown> | null>(null);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export function ReceiptDetailPage() {
     setExporting(true);
     try {
       const b = await api.disputes.export(id);
-      setBundle(b);
+      setBundle(b as Record<string, unknown>);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -65,6 +65,12 @@ export function ReceiptDetailPage() {
               <dd><Badge value={receipt.verification.decision} /></dd>
               <dt className="text-gray-500">Reason</dt>
               <dd className="font-mono text-xs">{receipt.verification.reason_code}</dd>
+              {receipt.verification.human_id && (
+                <>
+                  <dt className="text-gray-500">Authorized by</dt>
+                  <dd className="font-mono text-xs text-indigo-400 break-all">{receipt.verification.human_id}</dd>
+                </>
+              )}
               {receipt.verification.challenge_id && (
                 <>
                   <dt className="text-gray-500">Challenge</dt>

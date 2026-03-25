@@ -10,7 +10,8 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
     "demo": "tsx scripts/demo.ts",
-    "issue-delegation": "tsx scripts/issue-delegation.ts"
+    "issue-delegation": "tsx scripts/issue-delegation.ts",
+    "generate-principal-key": "tsx scripts/generate-principal-key.ts"
   },
   "dependencies": {
     "@noble/ed25519": "^2.1.0",

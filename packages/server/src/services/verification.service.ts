@@ -96,7 +96,10 @@ export async function verifyIntentReceipt(
   );
 
   if (!sigValid) {
-    return { decision: "DENY", reason_code: "SIGNATURE_INVALID" };
+    const hint = process.env.NODE_ENV !== "production"
+      ? ` — canonical payload: ${canonical.slice(0, 120)}…`
+      : "";
+    return { decision: "DENY", reason_code: `SIGNATURE_INVALID${hint}` };
   }
 
   // 6. Nonce replay protection

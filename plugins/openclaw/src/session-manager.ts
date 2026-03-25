@@ -74,11 +74,17 @@ export class SessionManager {
   }
 
   private async mintSession(): Promise<void> {
+    // Generate session keypair locally — private key never leaves this process.
+    const privBytes = randomBytes(32);
+    const privateKeyHex = bytesToHex(new Uint8Array(privBytes.buffer, privBytes.byteOffset, 32));
+    const publicKeyHex = bytesToHex(ed.getPublicKey(new Uint8Array(privBytes.buffer, privBytes.byteOffset, 32)));
+
     const res = await fetch(`${this.serverUrl}/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         grant_id: this.grantId,
+        public_key: publicKeyHex,
         expires_in_seconds: this.sessionTtlSeconds,
       }),
     });
@@ -91,11 +97,11 @@ export class SessionManager {
     const data = await res.json() as {
       session_key_id: string;
       public_key: string;
-      private_key: string;
       expires_at: string;
     };
 
-    this.session = { ...data, grant_id: this.grantId };
+    // Attach our locally-generated private key — server never saw it.
+    this.session = { ...data, private_key: privateKeyHex, grant_id: this.grantId };
 
     // Schedule refresh 60 seconds before expiry
     const expiresMs = new Date(data.expires_at).getTime();

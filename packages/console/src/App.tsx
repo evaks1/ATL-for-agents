@@ -5,6 +5,7 @@ import { DelegationsPage } from "./pages/Delegations";
 import { ReceiptsPage } from "./pages/Receipts";
 import { ReceiptDetailPage } from "./pages/ReceiptDetail";
 import { OpenClawPage } from "./pages/OpenClaw";
+import { VerifyPage } from "./pages/Verify";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/receipts" element={<ReceiptsPage />} />
         <Route path="/receipts/:id" element={<ReceiptDetailPage />} />
         <Route path="/openclaw" element={<OpenClawPage />} />
+        <Route path="/verify" element={<VerifyPage />} />
       </Routes>
     </Layout>
   );

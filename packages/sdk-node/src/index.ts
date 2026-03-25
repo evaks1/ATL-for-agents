@@ -100,9 +100,14 @@ export class ATLClient {
     return data;
   }
 
-  /** Register a new agent with ATL. Returns agent_id + public_key. */
-  async createAgent(): Promise<ATLAgent> {
-    return this.post<ATLAgent>("/agents", {});
+  /**
+   * Register a new agent. Generates the keypair locally — private key never
+   * leaves this process. Returns agent_id and the KeyPair (caller stores private key).
+   */
+  async createAgent(): Promise<ATLAgent & { key_pair: import("./crypto.js").KeyPair }> {
+    const key_pair = generateKeyPair();
+    const agent = await this.post<ATLAgent>("/agents", { public_key: key_pair.publicKey });
+    return { ...agent, key_pair };
   }
 
   /** Create a delegation granting an agent scoped capabilities. */
@@ -122,17 +127,20 @@ export class ATLClient {
 
   /**
    * Mint an ephemeral session key bound to a delegation.
-   * The private_key is returned once — caller must persist it.
+   * The keypair is generated locally — private key never sent to the server.
    */
   async mintSessionKey(
     grant_id: string,
     expires_in_seconds = 3600
   ): Promise<ATLSessionKey> {
-    const result = await this.post<Omit<ATLSessionKey, "grant_id">>("/sessions", {
+    const key_pair = generateKeyPair();
+    const result = await this.post<Omit<ATLSessionKey, "grant_id" | "private_key">>("/sessions", {
       grant_id,
+      public_key: key_pair.publicKey,
       expires_in_seconds,
     });
-    return { ...result, grant_id };
+    // Attach the locally-generated private key — server never saw it.
+    return { ...result, private_key: key_pair.privateKey, grant_id };
   }
 
   /**

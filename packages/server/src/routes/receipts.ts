@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { eq, desc } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { receipts, verifications } from "../db/schema.js";
+import { receipts, verifications, delegations } from "../db/schema.js";
 
 export async function receiptsRoutes(app: FastifyInstance) {
   app.get("/receipts", async (_req, reply) => {
@@ -39,6 +39,14 @@ export async function receiptsRoutes(app: FastifyInstance) {
         .where(eq(verifications.receiptId, receipt.id))
         .orderBy(desc(verifications.createdAt));
 
+      // Resolve human_id from the delegation's principalId
+      let human_id: string | undefined;
+      const [delegation] = await db
+        .select()
+        .from(delegations)
+        .where(eq(delegations.id, receipt.grantId));
+      if (delegation) human_id = delegation.principalId;
+
       return reply.send({
         id: receipt.id,
         grant_id: receipt.grantId,
@@ -50,6 +58,7 @@ export async function receiptsRoutes(app: FastifyInstance) {
           ? {
               decision: verification.decision,
               reason_code: verification.reasonCode,
+              human_id,
               challenge_id: verification.challengeId,
               created_at: verification.createdAt,
             }
