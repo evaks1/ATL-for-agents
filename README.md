@@ -4,6 +4,8 @@ Cryptographic proof that a human authorized every AI agent action.
 
 ## Architecture
 
+![HAEL Architecture](docs/architecture.png)
+
 HAEL operates with three actors and three keypairs.
 
 **Actors:**
@@ -232,15 +234,15 @@ The three-step pattern works the same regardless of framework (LangChain, AutoGe
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `POST` | `/agents` | ✓ | Register a new agent keypair |
-| `GET`  | `/agents` | — | List all agents |
+| `GET`  | `/agents` | ✓ | List all agents |
 | `POST` | `/delegations` | ✓ | Issue a UCAN delegation from principal to agent |
-| `GET`  | `/delegations` | — | List all delegations |
+| `GET`  | `/delegations` | ✓ | List all delegations |
 | `POST` | `/delegations/:grant_id/revoke` | ✓ | Revoke a delegation immediately |
 | `POST` | `/sessions` | ✓ | Mint an ephemeral session key under a delegation |
 | `POST` | `/verify` | ✓ | Submit a signed intent receipt for verification |
 | `POST` | `/approvals/:challenge_id/complete` | ✓ | Complete a step-up challenge |
-| `GET`  | `/receipts` | — | List all intent receipts |
-| `GET`  | `/receipts/:id` | — | Get a receipt with its verification snapshot |
+| `GET`  | `/receipts` | ✓ | List all intent receipts |
+| `GET`  | `/receipts/:id` | ✓ | Get a receipt with its verification snapshot |
 | `POST` | `/disputes/export` | ✓ | Export a cryptographic evidence bundle |
 
 Auth ✓ = requires `x-api-key` header.
@@ -304,7 +306,7 @@ Or set `SEED_API_KEY` and run migrations before deploying.
 ## Troubleshooting
 
 **`Error: Missing x-api-key header`**
-Start the server with `SEED_API_KEY=<value> pnpm dev`. Pass the same value as the `x-api-key` header on all mutating requests.
+Start the server with `SEED_API_KEY=<value> pnpm dev`. Pass the same value as the `x-api-key` header on all requests.
 
 **`pnpm install` fails with `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY`**
 The lockfile predates the `plugins/*` workspace entry. Delete `pnpm-lock.yaml` and run `pnpm install` again.
