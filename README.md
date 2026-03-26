@@ -146,6 +146,8 @@ npm install -g @atl/openclaw-plugin
 
 Claude will call `POST /atl/verify` before every privileged tool use.
 
+> **Note on enforcement:** The OpenClaw integration relies on Claude following the instructions in `SKILL.md`. This is soft enforcement, Claude is instructed to verify before acting, and it reliably does so under normal use, but the check is not enforced at the code level.
+
 ## Other LLMs and Agent Frameworks
 
 The HAEL server is LLM-agnostic. The OpenClaw plugin is Claude Code-specific, but two SDKs ship in the repo for integrating any other agent.
