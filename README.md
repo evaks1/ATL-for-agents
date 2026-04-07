@@ -53,8 +53,10 @@ Signed intent receipt  ──►  POST /verify  ◄───────┘
 
 ## Quickstart (5 minutes)
 
+`SEED_API_KEY` is a password you choose yourself for your ATL server. Any caller must include it in the `x-api-key` header to make requests. For local development `demo-key-local` is fine. For a real deployment use a long random string.
+
 ```bash
-# 1. Copy environment config
+# 1. Copy environment config (sets DATABASE_URL, REDIS_URL and SEED_API_KEY defaults)
 cp packages/server/.env.example packages/server/.env
 
 # 2. Start Postgres and Redis
@@ -62,13 +64,13 @@ docker compose up -d postgres redis
 
 # 3. Install dependencies and run migrations
 pnpm install
-SEED_API_KEY=demo-key-local pnpm db:migrate
+pnpm db:migrate
 
 # 4. Start the server
-SEED_API_KEY=demo-key-local pnpm dev
+pnpm dev
 
 # 5. In a second terminal, run the acceptance-criteria demo
-SEED_API_KEY=demo-key-local pnpm demo
+pnpm demo
 ```
 
 Expected output: all 9 steps pass with `✅`.
@@ -107,7 +109,7 @@ The script outputs a ready-to-paste `openclaw.json` snippet:
 {
   "plugins": {
     "atl": {
-      "serverUrl": "https://your-hael-server.fly.dev",
+      "serverUrl": "https://your-atl-server.com",
       "grantId": "<grant_id>",
       "sessionTtlSeconds": 3600
     }
@@ -121,8 +123,12 @@ Place this file at your workspace root before starting Claude Code.
 
 HAEL ships a first-party Claude Code plugin that enforces delegation policies before every privileged tool use.
 
+Build the plugin from the repo:
+
 ```bash
-npm install -g @atl/openclaw-plugin
+cd plugins/openclaw
+pnpm install
+pnpm build
 ```
 
 **Session key lifecycle:**
@@ -136,7 +142,7 @@ npm install -g @atl/openclaw-plugin
 {
   "plugins": {
     "atl": {
-      "serverUrl": "https://your-hael-server.fly.dev",
+      "serverUrl": "https://your-atl-server.com",
       "grantId": "<your-delegation-grant-id>",
       "sessionTtlSeconds": 3600
     }
@@ -157,7 +163,7 @@ The HAEL server is LLM-agnostic. The OpenClaw plugin is Claude Code-specific, bu
 ```typescript
 import { ATLClient } from "@atl/sdk";
 
-const atl = new ATLClient("https://your-hael-server.fly.dev");
+const atl = new ATLClient("https://your-atl-server.com");
 
 // One-time setup: create agent + delegation (do this with issue-delegation script instead for production)
 const agent = await atl.createAgent();
@@ -191,7 +197,7 @@ await atl.verifyBeforeExecute(receipt, async () => {
 ```python
 from atl_sdk import ATLClient
 
-atl = ATLClient("https://your-hael-server.fly.dev")
+atl = ATLClient("https://your-atl-server.com")
 
 # On startup: mint session key
 session = atl.mint_session_key(grant_id="<your-grant-id>")
@@ -254,48 +260,6 @@ Auth ✓ = requires `x-api-key` header.
 - **Per-action signed receipts** — every agent action produces an Ed25519-signed receipt that is stored and auditable, not just a session token that covers an entire conversation.
 - **7-layer pipeline on every verify call** — timestamp tolerance, delegation resolution, UCAN validation, session validation, agent signature verification, nonce replay protection, and capability policy evaluation run on each `POST /verify`.
 - **Dispute export** — `POST /disputes/export` returns a full cryptographic evidence bundle (delegation, receipt, verification snapshot, audit hash, bundle hash) suitable for legal or compliance review.
-
-## Deploy to Fly.io
-
-**Launch and deploy:**
-
-```bash
-fly launch    # first time: creates app, sets primary_region
-fly deploy    # subsequent deploys
-```
-
-**Provision Postgres:**
-
-```bash
-# Option A: Fly-managed Postgres cluster
-fly postgres create --name hael-db
-fly postgres attach hael-db
-# DATABASE_URL is set automatically after attach
-
-# Option B: External Postgres (Supabase, Neon, etc.)
-# Skip attach and set DATABASE_URL manually in secrets below
-```
-
-**Redis:**
-
-Use [Upstash](https://upstash.com) (serverless Redis, free tier) or Fly Redis. Copy the `rediss://` connection URL.
-
-**Set secrets:**
-
-```bash
-fly secrets set \
-  DATABASE_URL="postgres://..." \
-  REDIS_URL="rediss://..." \
-  SEED_API_KEY="<strong-random-string>"
-```
-
-Then run migrations once via a one-off machine:
-
-```bash
-fly ssh console -C "node packages/server/dist/db/migrate.js"
-```
-
-Or set `SEED_API_KEY` and run migrations before deploying.
 
 ## Security Model
 
