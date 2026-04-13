@@ -28,7 +28,7 @@ export async function agentsRoutes(app: FastifyInstance) {
   });
 
   // List agents
-  app.get("/agents", async (_req, reply) => {
+  app.get("/agents", { preHandler: requireApiKey }, async (_req, reply) => {
     const rows = await db
       .select()
       .from(agents)

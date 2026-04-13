@@ -92,7 +92,7 @@ export async function delegationsRoutes(app: FastifyInstance) {
   });
 
   // List delegations
-  app.get("/delegations", async (_req, reply) => {
+  app.get("/delegations", { preHandler: requireApiKey }, async (_req, reply) => {
     const rows = await db
       .select()
       .from(delegations)

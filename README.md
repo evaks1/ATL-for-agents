@@ -4,6 +4,8 @@ Cryptographic proof that a human authorized every AI agent action.
 
 ## Architecture
 
+![HAEL Architecture](docs/architecture.png)
+
 HAEL operates with three actors and three keypairs.
 
 **Actors:**
@@ -51,8 +53,10 @@ Signed intent receipt  ──►  POST /verify  ◄───────┘
 
 ## Quickstart (5 minutes)
 
+`SEED_API_KEY` is a password you choose yourself for your ATL server. Any caller must include it in the `x-api-key` header to make requests. For local development `demo-key-local` is fine. For a real deployment use a long random string.
+
 ```bash
-# 1. Copy environment config
+# 1. Copy environment config (sets DATABASE_URL, REDIS_URL and SEED_API_KEY defaults)
 cp packages/server/.env.example packages/server/.env
 
 # 2. Start Postgres and Redis
@@ -60,13 +64,13 @@ docker compose up -d postgres redis
 
 # 3. Install dependencies and run migrations
 pnpm install
-SEED_API_KEY=demo-key-local pnpm db:migrate
+pnpm db:migrate
 
 # 4. Start the server
-SEED_API_KEY=demo-key-local pnpm dev
+pnpm dev
 
 # 5. In a second terminal, run the acceptance-criteria demo
-SEED_API_KEY=demo-key-local pnpm demo
+pnpm demo
 ```
 
 Expected output: all 9 steps pass with `✅`.
@@ -105,7 +109,7 @@ The script outputs a ready-to-paste `openclaw.json` snippet:
 {
   "plugins": {
     "atl": {
-      "serverUrl": "https://your-hael-server.fly.dev",
+      "serverUrl": "https://your-atl-server.com",
       "grantId": "<grant_id>",
       "sessionTtlSeconds": 3600
     }
@@ -119,8 +123,12 @@ Place this file at your workspace root before starting Claude Code.
 
 HAEL ships a first-party Claude Code plugin that enforces delegation policies before every privileged tool use.
 
+Build the plugin from the repo:
+
 ```bash
-npm install -g @atl/openclaw-plugin
+cd plugins/openclaw
+pnpm install
+pnpm build
 ```
 
 **Session key lifecycle:**
@@ -134,7 +142,7 @@ npm install -g @atl/openclaw-plugin
 {
   "plugins": {
     "atl": {
-      "serverUrl": "https://your-hael-server.fly.dev",
+      "serverUrl": "https://your-atl-server.com",
       "grantId": "<your-delegation-grant-id>",
       "sessionTtlSeconds": 3600
     }
@@ -143,6 +151,8 @@ npm install -g @atl/openclaw-plugin
 ```
 
 Claude will call `POST /atl/verify` before every privileged tool use.
+
+> **Note on enforcement:** The OpenClaw integration relies on Claude following the instructions in `SKILL.md`. This is soft enforcement, Claude is instructed to verify before acting, and it reliably does so under normal use, but the check is not enforced at the code level.
 
 ## Other LLMs and Agent Frameworks
 
@@ -153,7 +163,7 @@ The HAEL server is LLM-agnostic. The OpenClaw plugin is Claude Code-specific, bu
 ```typescript
 import { ATLClient } from "@atl/sdk";
 
-const atl = new ATLClient("https://your-hael-server.fly.dev");
+const atl = new ATLClient("https://your-atl-server.com");
 
 // One-time setup: create agent + delegation (do this with issue-delegation script instead for production)
 const agent = await atl.createAgent();
@@ -187,7 +197,7 @@ await atl.verifyBeforeExecute(receipt, async () => {
 ```python
 from atl_sdk import ATLClient
 
-atl = ATLClient("https://your-hael-server.fly.dev")
+atl = ATLClient("https://your-atl-server.com")
 
 # On startup: mint session key
 session = atl.mint_session_key(grant_id="<your-grant-id>")
@@ -232,15 +242,15 @@ The three-step pattern works the same regardless of framework (LangChain, AutoGe
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `POST` | `/agents` | ✓ | Register a new agent keypair |
-| `GET`  | `/agents` | — | List all agents |
+| `GET`  | `/agents` | ✓ | List all agents |
 | `POST` | `/delegations` | ✓ | Issue a UCAN delegation from principal to agent |
-| `GET`  | `/delegations` | — | List all delegations |
+| `GET`  | `/delegations` | ✓ | List all delegations |
 | `POST` | `/delegations/:grant_id/revoke` | ✓ | Revoke a delegation immediately |
 | `POST` | `/sessions` | ✓ | Mint an ephemeral session key under a delegation |
 | `POST` | `/verify` | ✓ | Submit a signed intent receipt for verification |
 | `POST` | `/approvals/:challenge_id/complete` | ✓ | Complete a step-up challenge |
-| `GET`  | `/receipts` | — | List all intent receipts |
-| `GET`  | `/receipts/:id` | — | Get a receipt with its verification snapshot |
+| `GET`  | `/receipts` | ✓ | List all intent receipts |
+| `GET`  | `/receipts/:id` | ✓ | Get a receipt with its verification snapshot |
 | `POST` | `/disputes/export` | ✓ | Export a cryptographic evidence bundle |
 
 Auth ✓ = requires `x-api-key` header.
@@ -250,48 +260,6 @@ Auth ✓ = requires `x-api-key` header.
 - **Per-action signed receipts** — every agent action produces an Ed25519-signed receipt that is stored and auditable, not just a session token that covers an entire conversation.
 - **7-layer pipeline on every verify call** — timestamp tolerance, delegation resolution, UCAN validation, session validation, agent signature verification, nonce replay protection, and capability policy evaluation run on each `POST /verify`.
 - **Dispute export** — `POST /disputes/export` returns a full cryptographic evidence bundle (delegation, receipt, verification snapshot, audit hash, bundle hash) suitable for legal or compliance review.
-
-## Deploy to Fly.io
-
-**Launch and deploy:**
-
-```bash
-fly launch    # first time: creates app, sets primary_region
-fly deploy    # subsequent deploys
-```
-
-**Provision Postgres:**
-
-```bash
-# Option A: Fly-managed Postgres cluster
-fly postgres create --name hael-db
-fly postgres attach hael-db
-# DATABASE_URL is set automatically after attach
-
-# Option B: External Postgres (Supabase, Neon, etc.)
-# Skip attach and set DATABASE_URL manually in secrets below
-```
-
-**Redis:**
-
-Use [Upstash](https://upstash.com) (serverless Redis, free tier) or Fly Redis. Copy the `rediss://` connection URL.
-
-**Set secrets:**
-
-```bash
-fly secrets set \
-  DATABASE_URL="postgres://..." \
-  REDIS_URL="rediss://..." \
-  SEED_API_KEY="<strong-random-string>"
-```
-
-Then run migrations once via a one-off machine:
-
-```bash
-fly ssh console -C "node packages/server/dist/db/migrate.js"
-```
-
-Or set `SEED_API_KEY` and run migrations before deploying.
 
 ## Security Model
 
@@ -304,7 +272,7 @@ Or set `SEED_API_KEY` and run migrations before deploying.
 ## Troubleshooting
 
 **`Error: Missing x-api-key header`**
-Start the server with `SEED_API_KEY=<value> pnpm dev`. Pass the same value as the `x-api-key` header on all mutating requests.
+Start the server with `SEED_API_KEY=<value> pnpm dev`. Pass the same value as the `x-api-key` header on all requests.
 
 **`pnpm install` fails with `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY`**
 The lockfile predates the `plugins/*` workspace entry. Delete `pnpm-lock.yaml` and run `pnpm install` again.

@@ -2,9 +2,10 @@ import type { FastifyInstance } from "fastify";
 import { eq, desc } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { receipts, verifications, delegations } from "../db/schema.js";
+import { requireApiKey } from "../lib/apiKey.js";
 
 export async function receiptsRoutes(app: FastifyInstance) {
-  app.get("/receipts", async (_req, reply) => {
+  app.get("/receipts", { preHandler: requireApiKey }, async (_req, reply) => {
     const rows = await db
       .select()
       .from(receipts)
@@ -23,6 +24,7 @@ export async function receiptsRoutes(app: FastifyInstance) {
 
   app.get(
     "/receipts/:id",
+    { preHandler: requireApiKey },
     async (req: { params: { id: string } }, reply) => {
       const [receipt] = await db
         .select()
