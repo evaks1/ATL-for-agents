@@ -1,12 +1,12 @@
-# HAEL — Human-Agent Enterprise Layer
+# ATL — Agent Trust Layer
 
 Cryptographic proof that a human authorized every AI agent action.
 
 ## Architecture
 
-![HAEL Architecture](docs/architecture.png)
+![ATL Architecture](docs/architecture.jpeg)
 
-HAEL operates with three actors and three keypairs.
+ATL operates with three actors and three keypairs.
 
 **Actors:**
 
@@ -121,7 +121,7 @@ Place this file at your workspace root before starting Claude Code.
 
 ## Claude Code / OpenClaw
 
-HAEL ships a first-party Claude Code plugin that enforces delegation policies before every privileged tool use.
+ATL ships a first-party Claude Code plugin that enforces delegation policies before every privileged tool use.
 
 Build the plugin from the repo:
 
@@ -156,7 +156,7 @@ Claude will call `POST /atl/verify` before every privileged tool use.
 
 ## Other LLMs and Agent Frameworks
 
-The HAEL server is LLM-agnostic. The OpenClaw plugin is Claude Code-specific, but two SDKs ship in the repo for integrating any other agent.
+The ATL server is LLM-agnostic. The OpenClaw plugin is Claude Code-specific, but two SDKs ship in the repo for integrating any other agent.
 
 ### Node.js / TypeScript agents (`packages/sdk-node`)
 
@@ -185,7 +185,7 @@ const receipt = atl.signIntentReceipt(session, {
 });
 
 await atl.verifyBeforeExecute(receipt, async () => {
-  // Your tool execution here — only runs if HAEL returns ALLOW
+  // Your tool execution here — only runs if ATL returns ALLOW
   await runPayment(...);
 });
 ```
@@ -255,7 +255,7 @@ The three-step pattern works the same regardless of framework (LangChain, AutoGe
 
 Auth ✓ = requires `x-api-key` header.
 
-## How HAEL Differs
+## How ATL Differs
 
 - **Per-action signed receipts** — every agent action produces an Ed25519-signed receipt that is stored and auditable, not just a session token that covers an entire conversation.
 - **7-layer pipeline on every verify call** — timestamp tolerance, delegation resolution, UCAN validation, session validation, agent signature verification, nonce replay protection, and capability policy evaluation run on each `POST /verify`.
@@ -263,7 +263,7 @@ Auth ✓ = requires `x-api-key` header.
 
 ## Security Model
 
-- **Principal private keys never leave the principal** — the HAEL server receives only the signed UCAN token, never the private key that produced it.
+- **Principal private keys never leave the principal** — the ATL server receives only the signed UCAN token, never the private key that produced it.
 - **Ephemeral session keys** — session keypairs are short-lived and held in memory only. A compromised session key expires within its TTL window (default 1 hour).
 - **Nonce replay protection** — each intent receipt includes a UUID nonce stored in Redis. The server rejects any receipt whose nonce has been seen before (24-hour window).
 - **Hash-chained audit log** — every audit event records the SHA-256 hash of the previous event. The chain is tamper-evident: any insertion or modification invalidates all subsequent hashes.
@@ -289,7 +289,7 @@ The session key's `agent_id` does not match the delegation's `agent_id`. This ty
 docker compose up -d
 ```
 
-Starts Postgres, Redis, the HAEL server (port 3000), and the console UI (port 5173).
+Starts Postgres, Redis, the ATL server (port 3000), and the console UI (port 5173).
 
 ## License
 

@@ -1,7 +1,7 @@
 /**
  * generate-principal-key.ts
  *
- * Generates an Ed25519 keypair for use as a HAEL principal (human identity).
+ * Generates an Ed25519 keypair for use as an ATL principal (human identity).
  *
  * This script makes NO network calls. It can be run completely offline.
  * The private key is printed once and never stored anywhere by this script.
@@ -18,7 +18,7 @@ import { generateKeyPair } from "../src/lib/crypto.js";
 
 const { privateKey, publicKey } = generateKeyPair();
 
-console.log("\nHAEL — Principal Keypair Generator");
+console.log("\nATL — Principal Keypair Generator");
 console.log("=".repeat(50));
 console.log("\nGenerated offline. No network calls were made.\n");
 console.log("Store the private key securely (password manager, hardware key).");
