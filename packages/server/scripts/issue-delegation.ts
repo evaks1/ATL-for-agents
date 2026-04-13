@@ -2,7 +2,7 @@
  * issue-delegation.ts
  *
  * Production helper: sign a UCAN with a principal's own Ed25519 key
- * and create a delegation on the HAEL server.
+ * and create a delegation on the ATL server.
  *
  * First run (generates a new principal keypair):
  *   SEED_API_KEY=<key> pnpm issue-delegation
@@ -56,7 +56,7 @@ async function getAgents(): Promise<Array<{ agent_id: string; public_key: string
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 async function run() {
-  console.log("HAEL — Issue Principal Delegation");
+  console.log("ATL — Issue Principal Delegation");
   console.log("=".repeat(50));
 
   // Phase 1: Resolve principal keypair
